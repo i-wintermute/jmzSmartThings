@@ -55,14 +55,20 @@ Version 3.1 - 5Mar2018      Updates to support camera DTH changes
 Version 3.2 - 17Apr2018     Added option to use mode change as a trigger option per @prjct92eh2 request 
 "                           Added knock sensing as a trigger option
 Version 3.2.1 - 22Apr2018   Fixed extraneous error messages when mode changes used for trigger (added 3sec delay to let mode change finish first) 
-Version 3.2.2 - beta		processEvents(data map) data map corrected from knocker and evthandler
+Version 3.2.2 - 6Jul2018	processEvents(data map) data map corrected from knocker and evthandler
 "							Mode based trigger delay time now user configurable
+"							Fixed "return to preset" actions, it was wasn't overwriting runin calls, but should be (if the same thing keeps triggering the camera and the camera moved to the preset, it needs to just stay there).  
+"                               >>>>6Jul18 update-actually it can't overwrite, because if it does then only one camera will return (if you are using more than 1 camera in the same child app)
+"                                   >>>>The fix: All the cameras in this child app move to presets or not together, only the presets they move to and from are individual.  So instead of calling returnPresetLocalAction() individually for each camera, just run it once for all cameras, with overwrite on!
+"							Fixed Trigger creation when using presets and list of cameras.  The ".toInteger()" attached to the preset inputs to ensure the input was a number just doesn't work for some reason. Removed.
+"							Continued to fix presets, the runIn() methods improperly passed data.  Corrected minor typos, cleaned up logs.
+"                           6Jul18, resumed work.  Fixed return presets! (I hope. Commented fix in code.) Updated logs.
 
 To Do:
 -see todos
 */
 
-def appVersion() {"3.2.1"}
+def appVersion() {"3.2.2"}
 
 definition(
     name: "Blue Iris Fusion - Trigger",
@@ -93,7 +99,7 @@ def mainPage() {
             }
         } else {
             section("Blue Iris Camera Name") {  
-                paragraph "Enter the Blue Iris short name for the Camera (case-sensitive)."
+                paragraph "Enter the Blue Iris short name for the Camera (case-sensitive, no spaces or special characters)."
                 input "biCamera", "text", title: "Camera Name", required: false
             }
         }
@@ -126,7 +132,7 @@ def mainPage() {
             if (usePreset) {
                 input "disableRecording", "bool", title: "Disable Recording (and only move to preset)?", required: false
                 input "returnPreset", "bool", title: "Have camera return to original preset after the trigger event?", required: false, submitOnChange: true
-                if (returnPreset) input "returnPresetWaitTime", "number", title: "Wait period (seconds) before returning to orignal preset", required: true
+                if (returnPreset) input "returnPresetWaitTime", "number", title: "Wait period (seconds) before returning to original preset", required: true
                 if (usingCameraDTH) {
                     biCamerasSelected.each { camera ->
                         def cameraName = camera.displayName  
@@ -217,25 +223,25 @@ def initialize() {
     state.lastClosed = 0
     def names = []
     def presets = [] 
-    def returnPresets = []  
+    def returnPresets = []
     if (usingCameraDTH) { 
         biCamerasSelected.each { camera ->
             names += camera.name
             if (usePreset) {
                 def presetInput = "preset-${camera.displayName}"
-                presets += settings[presetInput].toInteger()
+                presets += settings[presetInput]   
                 if (returnPreset) {
-                    def switchBackPreset = "switchBackPreset-${cameraName}"
-                    returnPresets += settings[switchBackPreset].toInteger()  //todo - this returns an error during setup, says it can't to toInteger() on a null object, even when a number is entered in the field.  The other fields work and seem to use the same methods.
+                    def switchBackPreset = "switchBackPreset-${camera.displayName}"
+                    returnPresets += settings[switchBackPreset]
                 }
             }
         }
     } else {
         names += biCamera
         if (usePreset) {
-            presets += biPreset.toInteger()
+            presets += biPreset
             if (returnPreset) {
-                returnPresets += returnBiPreset.toInteger()
+                returnPresets += returnBiPreset
             }
         }
     }
@@ -243,11 +249,11 @@ def initialize() {
     state.presetList = presets
     state.returnPresetList = returnPresets
     state.listSize =  state.shortNameList.size()
-    log.info "initialized, listSize is $state.listSize, cameras are $state.shortNameList, and presets are $state.presetList"
+    log.info "initialized, listSize is $state.listSize, cameras are $state.shortNameList, presets are $state.presetList, and returnPresets are $state.returnPresetList"
 }
 
 def eventHandlerBinary(evt) {
-    if (parent.loggingOn) log.debug "processed event ${evt.name} from device ${evt.displayName} with value ${evt.value} and data ${evt.data}"
+    if (parent.loggingOn) log.debug "processed event ${evt.name} from device ${evt.displayName} with value ${evt.value}"
     if (allOk) {
         log.info "Event occured within the desired timing conditions, sending commands"
         processEvents([name: "$evt.displayName", value: "$evt.value"])
@@ -291,7 +297,7 @@ def localAction() {
             def presetString = 7 + state.presetList[i]  //1-7 are other actions, presets start at number 8.
             presetCommand = "/cam/${state.shortNameList[i]}/pos=${presetString}&user=${parent.username}&pw=${parent.password}"
             talkToHub(presetCommand)
-            if (returnPreset) runIn(returnPresetWaitTime, returnPresetLocalAction(i), [overwrite: false])
+            if (returnPreset) runIn(returnPresetWaitTime, returnPresetLocalAction)
         }
         if (!disableRecording) {
             log.info "Triggering: ${state.shortNameList[i]}"
@@ -301,12 +307,14 @@ def localAction() {
     }
 }
 
-def returnPresetLocalAction(i) {
+def returnPresetLocalAction() {
     def presetCommand = ""
-    log.info "Moving ${state.shortNameList[i]} to back to preset ${state.returnPresetList[i]}"
-    def presetString = 7 + state.returnPresetList[i]  //1-7 are other actions, presets start at number 8.
-    presetCommand = "/cam/${state.shortNameList[i]}/pos=${presetString}&user=${parent.username}&pw=${parent.password}"
-    talkToHub(presetCommand)
+    for (int i = 0; i < state.listSize; i++) {
+        log.info "Moving ${state.shortNameList[i]} back to preset ${state.returnPresetList[i]}"
+        def presetString = 7 + state.returnPresetList[i]  //1-7 are other actions, presets start at number 8.
+        presetCommand = "/cam/${state.shortNameList[i]}/pos=${presetString}&user=${parent.username}&pw=${parent.password}"
+        talkToHub(presetCommand)
+    }
 }
 
 def talkToHub(commandPath) {  //todo can I use a 'callback' function to parse results?  Otherwise the trigger app really isn't confirming it worked...
@@ -374,7 +382,7 @@ def externalAction() {
                                             if (parent.loggingOn) log.debug response4.data
                                             if (response4.data.result == "success") {
                                                 log.info "BI Fusion moved $shortName to preset '${state.presetList[i]}'"
-                                                if (returnPreset) runIn(returnPresetWaitTime, returnPresetExternalAction(i), [overwrite: false])
+                                                if (returnPreset) runIn(returnPresetWaitTime, returnPresetExternalAction, [data: [listNumber: "$i"]])
                                             } else {
                                                 log.error "BI Fusion Failure: preset '${state.presetList[i]}' not sent to $shortName"
                                                 if (parent.loggingOn) log.debug(response4.data.data.reason)
@@ -419,7 +427,8 @@ def externalAction() {
     }
 }
 
-def returnPresetExternalAction(i) {
+def returnPresetExternalAction(data) {
+	def i = data.listNumber
     log.info "Running externalAction"
     try {
         httpPostJson(uri: parent.host + ':' + parent.port, path: '/json',  body: ["cmd":"login"]) { response ->
@@ -447,7 +456,7 @@ def returnPresetExternalAction(i) {
                                     if (parent.loggingOn) log.debug response4.data
                                     if (response4.data.result == "success") {
                                         log.info "BI Fusion moved $shortName to preset '${state.presetList[i]}'"
-                                        if (returnPreset) runIn(returnPresetWaitTime, returnPresetExternalAction(i), [overwrite: false])
+                                        if (returnPreset) runIn(returnPresetWaitTime, returnPresetExternalAction, [data: [listNumber: "$i"]])
                                     } else {
                                         log.error "BI Fusion Failure: preset '${state.presetList[i]}' not sent to $shortName"
                                         if (parent.loggingOn) log.debug(response4.data.data.reason)

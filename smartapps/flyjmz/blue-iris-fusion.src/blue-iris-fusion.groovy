@@ -20,7 +20,7 @@ for the specific language governing permissions and limitations under the Licens
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-///										App Info											//
+///                                     App Info                                            //
 //////////////////////////////////////////////////////////////////////////////////////////////
 /*
 SmartThings Community Thread: 
@@ -46,33 +46,37 @@ Version 1.0 - 30July2016    Initial release
 Version 1.1 - 3August2016   Cleaned up Code
 Version 2.0 - 16Oct2016     Added Profile integration.  Also set up option for local connections, but doesn't work.  Standby for updates to make it work.
 Version 2.1 - 14Dec2016     Got local connection to work!  If you have issues, try external.  External is very stable.
-Version 2.2 - 2Jan2017		Found out the local connection issue, "Local Only" setting in Blue Iris Webserver Settings cannot be checked.
+Version 2.2 - 2Jan2017      Found out the local connection issue, "Local Only" setting in Blue Iris Webserver Settings cannot be checked.
 Version 2.3 - 17Jan2017     Added preference to turn debug logging on or off.
 Version 2.4 - 22Jan2017     Fixed error in profile change notifications (they all said temporary even if it was a hold change)
 Version 2.5 - 23Jan2017     Slight tweak to notifications.
-Version 2.6 - 17Jun2017		Fixed Profile names when using in LAN (localAction was throwing NULL). Thanks Zaxxon!
-Version 3.0 - 26Oct2017		Added Blue Iris Server and Camera Device Type Integration with motion, profile integration, manual triggering and manual profile switching.
-"   						Also added App Update Notifications, cleaned up notifications, added OAuth for motion alerts
-Version 3.0.1 - 28Oct2017	Fixed bug where server device map was would fail to initialize when user wasn't using it (so now it doesn't generate unless desired) - it would make install fail even if not using the Server DTH 
-"							Fixed bug that would only only allow one camera device to install.
-"							Enabled full Camera Device DTH support even without using Server DTH.
-"							Changed Software Update input (now it asks if you want to disable vs ask if you want to enable...so it defaults to enabled).
-Version 3.0.2 - 1Nov2017	Code updated to allow user to change Camera Device Names after installation (can change in devices' settings, the change in BI Fusion preferences is irrelevant unless the shortname changes as well).	                           
-Version 3.0.3 - 26Nov2017	Code cleanup; added Live Logging display of Motion URLs; updated "secure only" terminology since Blue Iris changed it.
-Version 3.0.4 - 29Nov2017	Added a method to rename camera devices to bicamera[i] without also having the shortname, which will now let people rename shortnames too.
-"							Added an option to have it not auto-delete old camera devices, hopefully this will let people get out of the loop of changing something but not knowing how to change it back in order to continue.
-Version 3.0.5 - 8Dec17  	Fixed Error when user ties a ST mode to BI's Inactive profile (the 0 was being treated as false and not switching modes for automatic mode integration)
-"							Improved settings and operation when not using profile<>mode integration.
-"							Added step in DNI fix method to prevent renaming already renamed devices.
-Version 3.0.6 - 24Dec17		Cleaned up log.info verbage
-"							Fixed new install flow so that OAUTH tokens are created if they haven't already been (so you don't have to hit the switch first)
-"							Added ability to add custom polling interval for server DTH
-Version 3.1 - 5Mar18		Added handling for "cameradevice.moveToPreset" command w/error checking	//NOTE: I need folks to test this for me!
+Version 2.6 - 17Jun2017     Fixed Profile names when using in LAN (localAction was throwing NULL). Thanks Zaxxon!
+Version 3.0 - 26Oct2017     Added Blue Iris Server and Camera Device Type Integration with motion, profile integration, manual triggering and manual profile switching.
+"                           Also added App Update Notifications, cleaned up notifications, added OAuth for motion alerts
+Version 3.0.1 - 28Oct2017   Fixed bug where server device map was would fail to initialize when user wasn't using it (so now it doesn't generate unless desired) - it would make install fail even if not using the Server DTH 
+"                           Fixed bug that would only only allow one camera device to install.
+"                           Enabled full Camera Device DTH support even without using Server DTH.
+"                           Changed Software Update input (now it asks if you want to disable vs ask if you want to enable...so it defaults to enabled).
+Version 3.0.2 - 1Nov2017    Code updated to allow user to change Camera Device Names after installation (can change in devices' settings, the change in BI Fusion preferences is irrelevant unless the shortname changes as well).                             
+Version 3.0.3 - 26Nov2017   Code cleanup; added Live Logging display of Motion URLs; updated "secure only" terminology since Blue Iris changed it.
+Version 3.0.4 - 29Nov2017   Added a method to rename camera devices to bicamera[i] without also having the shortname, which will now let people rename shortnames too.
+"                           Added an option to have it not auto-delete old camera devices, hopefully this will let people get out of the loop of changing something but not knowing how to change it back in order to continue.
+Version 3.0.5 - 8Dec17      Fixed Error when user ties a ST mode to BI's Inactive profile (the 0 was being treated as false and not switching modes for automatic mode integration)
+"                           Improved settings and operation when not using profile<>mode integration.
+"                           Added step in DNI fix method to prevent renaming already renamed devices.
+Version 3.0.6 - 24Dec17     Cleaned up log.info verbage
+"                           Fixed new install flow so that OAUTH tokens are created if they haven't already been (so you don't have to hit the switch first)
+"                           Added ability to add custom polling interval for server DTH
+Version 3.1 - 5Mar18        Added handling for "cameradevice.moveToPreset" command w/error checking //NOTE: I need folks to test this for me!
 Version 3.2 - 17Apr18       Hopefully fixed external profile switch error
 Version 3.2.1 - 18Apr18     Cleaned up some of the logs, fixed the external command lock code (1 & 2 are opposite in external vs local commands)
-
+Version 3.2.2 - 6Jul2018    Updated notes after comfirming v3.2.1's fixes worked & did some logging cleanup. Updated language in preferences.  Custom polling code redone to be more robust. Added Periodic notifications for server offline.
+Version 3.2.3 - 23Jul2018  	Updated Nofications to support SmartThings' depricating the Contact Book feature (which was a dumb move on their part).
 
 TODO:
+- getting "error physicalgraph.app.exception.smartAppException: Method Not Allowed" 3-5 times in log 5-10 seconds after mode switches to away
+    >>this isn't happening in any other mode switches. ?????
+    >>need to check if this is still happening after all the other updates first
 - there is a todo for adding call back to local mode when not using bi server dth...
 
 -Add ability to enter both LAN and WAN address for: failover, camera live feed
@@ -84,7 +88,7 @@ https://community.smartthings.com/t/help-receiving-http-events-from-raspberry-pi
 https://community.smartthings.com/t/tutorial-creating-a-rest-smartapp-endpoint/4331
 */
 
-def appVersion() {"3.2.1"}
+def appVersion() {"3.2.3"}
 
 mappings {
     path("/active/:camera") {
@@ -131,16 +135,17 @@ def BIFusionSetup() {
         }
         section("Notification Delivery Settings", hidden: false, hideable: true) {
             input("recipients", "contact", title: "Send notifications to") {
-                input "pushAndPhone", "enum", title: "Also send SMS? (optional, it will always send push)", required: false, options: ["Yes", "No"]      
-                input "phone", "phone", title: "Phone Number (only for SMS)", required: false
-                paragraph "If outside the US please make sure to enter the proper country code"
+                input "wantsPush", "bool", title: "Send Push Notification? (pushes to all this location's users)", required: false
+                paragraph "If you want SMS Notifications, enter phone numbers including the country code (1 for USA), otherwise leave blank. Separate multiple numbers with a semi-colon (;). Only enter the numbers, no spaces or special characters."
+                input "phoneNumbers", "string", title: "Enter Phone Numbers for SMS Notifications:", required: false
             }
-            input "updateAlertsOff", "bool", title: "Disable software update alerts?", required:false
         }
-        section("Debug", hidden: true, hideable: true){
+        section("Advanced", hidden: true, hideable: true){
             paragraph "You can turn on debug logging, viewed in Live Logging on the API website."
             def loggingOn = false
             input "loggingOn", "bool", title: "Debug Logging On?"
+            paragraph "New software version notifications are sent automatically, but can be disabled."
+            input "updateAlertsOff", "bool", title: "Disable software update alerts?", required:false
         }
     }
 }
@@ -158,7 +163,7 @@ def BIServerSetup() {
             }
         }
         section("Blue Iris Server Login Settings") {
-            paragraph "Note: Username, Password, and camera Shortnames cannot contain special characters."
+            paragraph "Note: Username, Password, and camera Shortnames cannot contain special characters or spaces."
             input "username", "text", title: "Blue Iris Username", required: true
             input "password", "password", title: "Blue Iris Password", required: true
             paragraph "Note: Blue Iris only allows Admin Users to toggle profiles."
@@ -167,8 +172,12 @@ def BIServerSetup() {
                 input "port", "number", title: "Blue Iris Server Port", description: "e.g. 81", required:true
                 paragraph "NOTE: Ensure 'Use secure session keys and login page' is not checked in Blue Iris Webserver - Advanced settings."
                 double waitThreshold = 5
-                input "waitThreshold", "number", title: "Blue Iris Server Health Monitor: Enter the max server response time:", description: "Default: 5 seconds", required:false, displayDuringSetup: true
-                input "pollingInterval", "number", title: "You can set a custom polling interval as well", description: "Default: 15 minutes", required: false, displayDuringSetup: true 
+                input "waitThreshold", "number", title: "Custom Server Health Monitor, max server response time: (sec)", description: "Default: 5 seconds", required:false
+                input "pollingInterval", "enum", title: "Custom polling interval? (min)", description: "Default: 15 minutes", options: ["1", "5", "10", "15", "30", "60"], required: false
+                input "periodicNotifications", "bool", title: "Receive Periodic Notifications for Errors?", required: false, submitOnChange: true 
+                if (periodicNotifications) {
+                    input "periodicNotificationsTiming", "number", title: "Periodic Notification Interval (minutes between messages):", description: "Defaults to 15 min", required: false
+                }
             } else {
                 paragraph "Local or External Connection to Blue Iris Server (i.e. LAN vs WAN)?"
                 paragraph "(External requires port forwarding/VPN/etc so the SmartThings Cloud can reach your BI server.)"
@@ -353,7 +362,7 @@ def initialize() {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-//					BI FUSION 3.X Code (Uses Device Type Handlers)		///
+//                  BI FUSION 3.X Code (Uses Device Type Handlers)      ///
 ///////////////////////////////////////////////////////////////////////////
 def createInfoMaps() {
     //First create Profile:
@@ -375,12 +384,12 @@ def createInfoMaps() {
     if (profile6 != null) state.profileModeMap[6].modeName = profile6
     if (profile7 != null) state.profileModeMap[7].modeName = profile7
     if (autoModeProfileSync) {
-        location.modes.each { mode ->								//todo- this section prevents users from using the same BI profile number for multiple ST Modes (ie home and night are both profile 2).  
+        location.modes.each { mode ->                               //todo- this section prevents users from using the same BI profile number for multiple ST Modes (ie home and night are both profile 2).  
             //Probably need to run a script to see if multiple modes have the same number and combine the name, eg "Home/Night".  Then in this and in the server DTH,
             //instead of comparing the actual ST mode to the result of getProfileName(), have it compare the number from BI's return to getProfileNumber()
             def checkMode = "mode-${mode.id.toString()}"
             if (settings[checkMode] != null) {
-                state.profileModeMap[settings[checkMode].toInteger()].modeName = "${mode.name}"	//For each ST mode, it determines if the user made profile number for it in settings, then uses that profile number as the map value number and fills the name.
+                state.profileModeMap[settings[checkMode].toInteger()].modeName = "${mode.name}" //For each ST mode, it determines if the user made profile number for it in settings, then uses that profile number as the map value number and fills the name.
             }
         }
     }
@@ -401,8 +410,11 @@ def createInfoMaps() {
         state.blueIrisServerSettings.DNI = "$hosthex:$porthex"   //Change: this was: if (usingBIServer) state.blueIrisServerSettings.DNI = "$hosthex:$porthex"
         //else state.blueIrisServerSettings.DNI = null
         state.blueIrisServerSettings.waitThreshold = waitThreshold
+        state.blueIrisServerSettings.pollingInterval = pollingInterval
         state.blueIrisServerSettings.holdChanges = holdChanges
         state.blueIrisServerSettings.loggingOn = loggingOn
+        state.blueIrisServerSettings.periodicNotifications = periodicNotifications
+        state.blueIrisServerSettings.periodicNotificationsTiming = (periodicNotificationsTiming != null) ? periodicNotificationsTiming : 15
         if (loggingOn) log.debug "state.blueIrisServerSettings map: ${state.blueIrisServerSettings}"
     }
 
@@ -488,7 +500,7 @@ def makeDevices() {
 }
 
 
-//////////////////////   	Server Device Creation 		////////////////////////////////
+//////////////////////      Server Device Creation      ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
 
 def createBlueIrisServerDevice() {
@@ -518,9 +530,9 @@ def createBlueIrisServerDevice() {
     }
 
     //Code for motion active/inactive from BI Server Device.  OAuth setup overrode this, but I'd like to go back (todo):
-    //subscribe(serverDevice, "cameraMotionActive", cameraActiveHandler)	
+    //subscribe(serverDevice, "cameraMotionActive", cameraActiveHandler)    
     //subscribe(serverDevice, "cameraMotionInactive", cameraInactiveHandler)
-}					
+}                   
 
 def serverDeviceProfileHandler(evt) {
     if (loggingOn) log.debug "serverDeviceProfileHandler() received {$evt}"
@@ -533,11 +545,11 @@ def serverDeviceStopLightHandler(evt) {
 }
 
 def serverDeviceErrorMessageHandler(evt) {
-    log.error "serverDeviceErrorMessageHandler() received {$evt}"
+    log.error "serverDeviceErrorMessageHandler() received {$evt.descriptionText}"
     send("${evt.descriptionText}")
 }
 
-/*		//Code for motion active/inactive from BI Server Device.  OAuth setup overrode this, but I'd like to go back (todo).
+/*      //Code for motion active/inactive from BI Server Device.  OAuth setup overrode this, but I'd like to go back (todo).
 def cameraActiveHandler(evt) {  //receives triggered status from BI through BI Server Device, and sends it to the Camera device
 if (loggingOn) log.debug "cameraActiveHandler() got event: '${evt.displayName}'. Camera '${evt.value}' is active."
 log.trace "cameraActiveHandler() got event: '${evt.displayName}'. Camera '${evt.value}' is active."
@@ -566,12 +578,12 @@ cameraDevice.inactive()
 }
 */
 
-//////////////////////   	Camera Device Creation 		////////////////////////////////
+//////////////////////      Camera Device Creation      ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
 def createCameraDevice() {
     for (int i = 0; i < howManyCameras; i++) {  
         def cameraDevice = getChildDevice(state.cameradeviceDNI[i])
-        if (!cameraDevice) {	//double check that it isn't already installed
+        if (!cameraDevice) {    //double check that it isn't already installed
             try {
                 cameraDevice = addChildDevice("flyjmz", "Blue Iris Camera", state.cameradeviceDNI[i], location.hubs[0].id, [name: "${state.camerashortName[i]}", label: "${state.cameradisplayName[i]}", completedSetup: true])
                 if (loggingOn) log.debug "'${state.cameradisplayName[i]}' Device Created"
@@ -599,13 +611,13 @@ def cameraTriggerHandler(evt) {  //sends command to camera to start recording wh
     def cameraMapSize = state.cameradeviceDNI.size()
     if (usingBIServer) {
         def serverDevice = getChildDevice(state.blueIrisServerSettings.DNI)
-        serverDevice.triggerCamera(shortName)		//sends command through the BI Server Device
+        serverDevice.triggerCamera(shortName)       //sends command through the BI Server Device
     } else {
         if(localOnly) {
             def triggerCameraCommand = "/admin?camera=${shortName}&trigger&user=${username}&pw=${password}"
             localAction(triggerCameraCommand)      //sends command through local action if not using the BI Server Device
         } else {
-            externalAction("trigger",shortName)		//sends command through external action if not using the BI Server Device
+            externalAction("trigger",shortName)     //sends command through external action if not using the BI Server Device
         }
     }
 }
@@ -639,7 +651,7 @@ def cameraPresetErrorChecker() {
 }
 
 
-/////   				Camera Motion Code (Using OAuth) 						   /////
+/////                   Camera Motion Code (Using OAuth)                           /////
 ////////////////////////////////////////////////////////////////////////////////////////
 
 def createBIFusionToken() {
@@ -659,7 +671,7 @@ def lanEventHandler(evt) {  //todo -- see if i can make this work
 def msg = parseLanMessage(evt.value)
 def body = msg.body
 log.debug "lanEventHandler() got msg $msg and body $body"
-//def headerString = new String(parsedEvent.headers.decodeBase64())		
+//def headerString = new String(parsedEvent.headers.decodeBase64())     
 //def bodyString = new String(parsedEvent.body.decodeBase64())
 }
 */
@@ -730,7 +742,7 @@ private String convertPortToHex(port) {
 
 
 ///////////////////////////////////////////////////////////////////////////
-//					BI FUSION 2.X Code (No devices required)
+//                  BI FUSION 2.X Code (No devices required)
 ///////////////////////////////////////////////////////////////////////////
 def modeChange(evt) {
     if (evt.name != "mode") {return;}
@@ -764,7 +776,7 @@ def modeChange(evt) {
                     if(receiveAlerts == "Yes") send("Temporarily changed Blue Iris to profile ${profile}")
                 }
                 def profileChangeCommand = "/admin?profile=${profile}&lock=${lock}&user=${username}&pw=${password}"
-                localAction(profileChangeCommand)	//sends profile change through local lan (like device) except through the app
+                localAction(profileChangeCommand)   //sends profile change through local lan (like device) except through the app
             } else externalAction("profile",profile)  //sends profile change from SmartThings cloud to BI server
         }  
     }
@@ -812,11 +824,11 @@ def externalAction(commandType,stringCommand) {  //can accept string of either: 
                                     def newProfile = null
                                     log.info "Changing Blue Iris Profile to ${profile} via external command"
                                     if (response3.data.data.profile != profile) {        
-                                        httpPostJson(uri: host + ':' + port, path: '/json',  body: ["cmd":"status","profile":profile, "session":session]) { response4 -> //""lock":lock", cut out to see if that was causing the extraneous error message
+                                        httpPostJson(uri: host + ':' + port, path: '/json',  body: ["cmd":"status","profile":profile, "session":session]) { response4 -> //note: cannot set "lock" in JSON command, the only way to do a hold is to send the "profile" command twice
                                             if (loggingOn) log.debug "response 4: " + response4.data
                                             def lockStatus = response4.data.data.lock.toInteger()
                                             def profileChangedTo = response4.data.data.profile.toInteger()
-                                            //////send command again to make it a hold change (this is the old method)/////
+                                            //////send command again to make it a hold change (because you can't send "lock" in a JSON command)/////
                                             if (holdChanges) {
                                                 httpPostJson(uri: host + ':' + port, path: '/json',  body: ["cmd":"status","profile":profile, "session":session]) { response6 ->
                                                     if (loggingOn) log.debug "response 15: " + response6.data
@@ -990,7 +1002,7 @@ def checkUpdates(name, installedVersion, website) {
         publishedVersion = "0.0"
     }
     if (loggingOn) log.debug "${name} publishedVersion from web is ${publishedVersion}, installedVersion is ${installedVersion}"
-    def instVerNum = 0			    
+    def instVerNum = 0              
     def webVerNum = 0
     if (publishedVersion && installedVersion) {  //make sure no null
         def instVerMap = installedVersion.tokenize('.')  //makes a map of each level of the version
@@ -1033,20 +1045,31 @@ def checkUpdates(name, installedVersion, website) {
 }
 
 private send(msg) {  
+	//First try to use Contact Book (Depricated 30July2018)
     if (location.contactBookEnabled) {
-        if (loggingOn) log.debug("sending notifications to: ${recipients?.size()}")
+        if (loggingOn) log.debug("sending '$msg' notification to: ${recipients?.size()}")
         sendNotificationToContacts(msg, recipients)
     }
+    //Otherwise use old school Push/SMS notifcations
     else {
-        Map options = [:]
-        if (phone) {
-            options.phone = phone
-            if (loggingOn) log.debug 'sending SMS'
-        } else if (pushAndPhone == 'Yes') {
-            options.method = 'both'
-            options.phone = phone
-        } else options.method = 'push'
-        sendNotification(msg, options)
+        if (loggingOn) log.debug("sending message to app notications tab: '$msg'")
+        sendNotificationEvent(msg)  //First send to app notifications (because of the loop we're about to do, we need to use this version to avoid multiple instances) 
+        if (wantsPush) {
+            sendPushMessage(msg)  //Second, send the push notification if user wanted it
+            if (loggingOn) log.debug("sending push message")
+        }
+
+        if (phoneNumbers) {	//Third, send SMS messages if desired
+            if (phoneNumbers.indexOf(";") > 1) {	//Code block for multiple phone numbers
+                def phones = phoneNumbers.split(";")
+                for (int i = 0; i < phones.size(); i++) {
+                    if (loggingOn) log.debug("sending SMS to ${phones[i]}")
+                    sendSmsMessage(phones[i], msg)
+                }
+            } else {	//Code block for single phone number
+                if (loggingOn) log.debug("sending SMS to ${phoneNumbers}")
+                sendSmsMessage(phoneNumbers, msg)
+            }
+        }
     }
-    if (loggingOn) log.debug msg
 }
